@@ -10,12 +10,11 @@ var username = builder.AddParameter("uesrname", "guest", true);
 var password = builder.AddParameter("password", "guest", true);
 var rabbitmq = builder.AddRabbitMQ("rabbitmq", username, password, rabbitPort).WithManagementPlugin();
 
-var daprPubSub = builder.AddDaprPubSub("pubsub-rabbit", new DaprComponentOptions
-	{
-		LocalPath = Path.Combine("../.dapr", "components", "pubsub-rabbit.yaml"),
-	})
-	.WithMetadata("connectionString", $"amqp://{username}:{password}@localhost:{rabbitPort}")
-	.WaitFor(rabbitmq);
+// var connectionString = $"amqp://{await username.Resource.GetValueAsync(CancellationToken.None)}:{await password.Resource.GetValueAsync(CancellationToken.None)}@localhost:{rabbitPort}";
+// var daprPubSub = builder.AddDaprPubSub("pubsub-rabbit")
+// 	.WithMetadata("connectionString", connectionString)
+// 	.WaitFor(rabbitmq);
+//Console.WriteLine($"[Aspire] Dapr PubSub connection string: {connectionString}");
 
 builder.AddProject<Projects.Web>("web")
 	.WithHttpHealthCheck("/health")
@@ -25,6 +24,7 @@ builder.AddProject<Projects.Web>("web")
 	{
 		b.WithOptions(new DaprSidecarOptions
 			{
+				ResourcesPaths = ["../.dapr/components"],
 				AppHealthCheckPath = "/health",
 				EnableAppHealthCheck = true,
 				AppId = "web",
@@ -33,8 +33,9 @@ builder.AddProject<Projects.Web>("web")
 				DaprHttpPort = 3500,
 				MetricsPort = 9090
 			})
-			.WithReference(daprPubSub)
+			//.WithReference(daprPubSub)
 			.WithReference(daprState);
-	});
+	})
+	.WaitFor(rabbitmq);
 
 builder.Build().Run();
